@@ -27,18 +27,20 @@ from basic_pitch import (
 )
 from basic_pitch.inference import Model
 
-
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-
 
 def main() -> None:
     """Handle command line arguments. Entrypoint for this script."""
     parser = argparse.ArgumentParser(description="Predict midi from audio.")
-    parser.add_argument("output_dir", type=str, help="directory to save outputs")
     parser.add_argument(
-        "audio_paths",
+        "-o", "--output_dir", type=str, required=True, help="directory to save outputs"
+    )
+    parser.add_argument(
+        "-i",
+        "--audio_paths",
         type=str,
         nargs="+",
+        required=True,
         help="Space separated paths to the input audio files.",
     )
     parser.add_argument(
