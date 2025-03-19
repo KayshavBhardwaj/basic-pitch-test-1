@@ -24,7 +24,13 @@ import pathlib
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union, cast
 
 
-from basic_pitch import CT_PRESENT, ICASSP_2022_MODEL_PATH, ONNX_PRESENT, TF_PRESENT, TFLITE_PRESENT
+from basic_pitch import (
+    CT_PRESENT,
+    ICASSP_2022_MODEL_PATH,
+    ONNX_PRESENT,
+    TF_PRESENT,
+    TFLITE_PRESENT,
+)
 
 try:
     import tensorflow as tf
@@ -83,7 +89,9 @@ class Model:
                 self.model = tf.saved_model.load(str(model_path))
                 return
             except Exception as e:
-                if os.path.isdir(model_path) and {"saved_model.pb", "variables"} & set(os.listdir(model_path)):
+                if os.path.isdir(model_path) and {"saved_model.pb", "variables"} & set(
+                    os.listdir(model_path)
+                ):
                     logging.warning(
                         "Could not load TensorFlow saved model %s even "
                         "though it looks like a saved model file with error %s. "
@@ -96,7 +104,9 @@ class Model:
             present.append("CoreML")
             try:
                 self.model_type = Model.MODEL_TYPES.COREML
-                self.model = ct.models.MLModel(str(model_path), compute_units=ct.ComputeUnit.CPU_ONLY)
+                self.model = ct.models.MLModel(
+                    str(model_path), compute_units=ct.ComputeUnit.CPU_ONLY
+                )
                 return
             except Exception as e:
                 if str(model_path).endswith(".mlpackage"):
@@ -154,7 +164,9 @@ class Model:
 
     def predict(self, x: npt.NDArray[np.float32]) -> Dict[str, npt.NDArray[np.float32]]:
         if self.model_type == Model.MODEL_TYPES.TENSORFLOW:
-            return {k: v.numpy() for k, v in cast(tf.keras.Model, self.model(x)).items()}
+            return {
+                k: v.numpy() for k, v in cast(tf.keras.Model, self.model(x)).items()
+            }
         elif self.model_type == Model.MODEL_TYPES.COREML:
             result = cast(ct.models.MLModel, self.model).predict({"input_2": x})
             return {
@@ -229,7 +241,9 @@ def get_audio_input(
     audio_original, _ = librosa.load(str(audio_path), sr=AUDIO_SAMPLE_RATE, mono=True)
 
     original_length = audio_original.shape[0]
-    audio_original = np.concatenate([np.zeros((int(overlap_len / 2),), dtype=np.float32), audio_original])
+    audio_original = np.concatenate(
+        [np.zeros((int(overlap_len / 2),), dtype=np.float32), audio_original]
+    )
     for window, window_time in window_audio_file(audio_original, hop_size):
         yield np.expand_dims(window, axis=0), window_time, original_length
 
@@ -258,9 +272,15 @@ def unwrap_output(
         output = output[:, n_olap:-n_olap, :]
 
     output_shape = output.shape
-    n_output_frames_original = int(np.floor(audio_original_length * (ANNOTATIONS_FPS / AUDIO_SAMPLE_RATE)))
-    unwrapped_output = output.reshape(output_shape[0] * output_shape[1], output_shape[2])
-    return unwrapped_output[:n_output_frames_original, :]  # trim to original audio length
+    n_output_frames_original = int(
+        np.floor(audio_original_length * (ANNOTATIONS_FPS / AUDIO_SAMPLE_RATE))
+    )
+    unwrapped_output = output.reshape(
+        output_shape[0] * output_shape[1], output_shape[2]
+    )
+    return unwrapped_output[
+        :n_output_frames_original, :
+    ]  # trim to original audio length
 
 
 def run_inference(
@@ -289,12 +309,17 @@ def run_inference(
     hop_size = AUDIO_N_SAMPLES - overlap_len
 
     output: Dict[str, Any] = {"note": [], "onset": [], "contour": []}
-    for audio_windowed, _, audio_original_length in get_audio_input(audio_path, overlap_len, hop_size):
+    for audio_windowed, _, audio_original_length in get_audio_input(
+        audio_path, overlap_len, hop_size
+    ):
         for k, v in model.predict(audio_windowed).items():
             output[k].append(v)
 
     unwrapped_output = {
-        k: unwrap_output(np.concatenate(output[k]), audio_original_length, n_overlapping_frames) for k in output
+        k: unwrap_output(
+            np.concatenate(output[k]), audio_original_length, n_overlapping_frames
+        )
+        for k in output
     }
 
     if debug_file:
@@ -305,7 +330,9 @@ def run_inference(
                     "audio_original_length": audio_original_length,
                     "hop_size_samples": hop_size,
                     "overlap_length_samples": overlap_len,
-                    "unwrapped_output": {k: v.tolist() for k, v in unwrapped_output.items()},
+                    "unwrapped_output": {
+                        k: v.tolist() for k, v in unwrapped_output.items()
+                    },
                 },
                 f,
             )
@@ -403,7 +430,9 @@ def save_note_events(
 
     with open(save_path, "w") as fhandle:
         writer = csv.writer(fhandle, delimiter=",")
-        writer.writerow(["start_time_s", "end_time_s", "pitch_midi", "velocity", "pitch_bend"])
+        writer.writerow(
+            ["start_time_s", "end_time_s", "pitch_midi", "velocity", "pitch_bend"]
+        )
         for start_time, end_time, note_number, amplitude, pitch_bend in note_events:
             row = [start_time, end_time, note_number, int(np.round(127 * amplitude))]
             if pitch_bend:
@@ -449,7 +478,9 @@ def predict(
         print(f"Predicting MIDI for {audio_path}...")
 
         model_output = run_inference(audio_path, model_or_model_path, debug_file)
-        min_note_len = int(np.round(minimum_note_length / 1000 * (AUDIO_SAMPLE_RATE / FFT_HOP)))
+        min_note_len = int(
+            np.round(minimum_note_length / 1000 * (AUDIO_SAMPLE_RATE / FFT_HOP))
+        )
         midi_data, note_events = infer.model_output_to_notes(
             model_output,
             onset_thresh=onset_threshold,
@@ -546,20 +577,27 @@ def predict_and_save(
             )
 
             if save_model_outputs:
-                model_output_path = build_output_path(audio_path, output_directory, OutputExtensions.MODEL_OUTPUT_NPZ)
+                model_output_path = build_output_path(
+                    audio_path, output_directory, OutputExtensions.MODEL_OUTPUT_NPZ
+                )
                 try:
                     np.savez(model_output_path, basic_pitch_model_output=model_output)
-                    file_saved_confirmation(OutputExtensions.MODEL_OUTPUT_NPZ.name, model_output_path)
+                    file_saved_confirmation(
+                        OutputExtensions.MODEL_OUTPUT_NPZ.name, model_output_path
+                    )
                 except Exception as e:
-                    failed_to_save(OutputExtensions.MODEL_OUTPUT_NPZ.name, model_output_path)
+                    failed_to_save(
+                        OutputExtensions.MODEL_OUTPUT_NPZ.name, model_output_path
+                    )
                     raise e
 
             if save_midi:
+                # try:
+                #     midi_path = build_output_path(audio_path, output_directory, OutputExtensions.MIDI)
+                # except IOError as e:
+                #     raise e
                 try:
-                    midi_path = build_output_path(audio_path, output_directory, OutputExtensions.MIDI)
-                except IOError as e:
-                    raise e
-                try:
+                    midi_path = output_directory
                     midi_data.write(str(midi_path))
                     file_saved_confirmation(OutputExtensions.MIDI.name, midi_path)
                 except Exception as e:
@@ -567,19 +605,31 @@ def predict_and_save(
                     raise e
 
             if sonify_midi:
-                midi_sonify_path = build_output_path(audio_path, output_directory, OutputExtensions.MIDI_SONIFICATION)
+                midi_sonify_path = build_output_path(
+                    audio_path, output_directory, OutputExtensions.MIDI_SONIFICATION
+                )
                 try:
-                    infer.sonify_midi(midi_data, midi_sonify_path, sr=sonification_samplerate)
-                    file_saved_confirmation(OutputExtensions.MIDI_SONIFICATION.name, midi_sonify_path)
+                    infer.sonify_midi(
+                        midi_data, midi_sonify_path, sr=sonification_samplerate
+                    )
+                    file_saved_confirmation(
+                        OutputExtensions.MIDI_SONIFICATION.name, midi_sonify_path
+                    )
                 except Exception as e:
-                    failed_to_save(OutputExtensions.MIDI_SONIFICATION.name, midi_sonify_path)
+                    failed_to_save(
+                        OutputExtensions.MIDI_SONIFICATION.name, midi_sonify_path
+                    )
                     raise e
 
             if save_notes:
-                note_events_path = build_output_path(audio_path, output_directory, OutputExtensions.NOTE_EVENTS)
+                note_events_path = build_output_path(
+                    audio_path, output_directory, OutputExtensions.NOTE_EVENTS
+                )
                 try:
                     save_note_events(note_events, note_events_path)
-                    file_saved_confirmation(OutputExtensions.NOTE_EVENTS.name, note_events_path)
+                    file_saved_confirmation(
+                        OutputExtensions.NOTE_EVENTS.name, note_events_path
+                    )
                 except Exception as e:
                     failed_to_save(OutputExtensions.NOTE_EVENTS.name, note_events_path)
                     raise e

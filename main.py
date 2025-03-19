@@ -29,6 +29,7 @@ from basic_pitch.inference import Model
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
+
 def main() -> None:
     """Handle command line arguments. Entrypoint for this script."""
     parser = argparse.ArgumentParser(description="Predict midi from audio.")
@@ -55,7 +56,8 @@ def main() -> None:
         "--model-serialization",
         type=str,
         choices=["tf", "coreml", "tflite", "onnx"],
-        help="If used, --model-path is ignored and instead the model serialization type" "specified is used.",
+        help="If used, --model-path is ignored and instead the model serialization type"
+        "specified is used.",
     )
     parser.add_argument(
         "--save-midi",
@@ -155,14 +157,16 @@ def main() -> None:
     )
 
     output_dir = pathlib.Path(args.output_dir)
-    verify_output_dir(output_dir)
+    # verify_output_dir(output_dir)
 
     audio_path_list = [pathlib.Path(audio_path) for audio_path in args.audio_paths]
     for audio_path in audio_path_list:
         verify_input_path(audio_path)
 
     if args.model_serialization:
-        model = Model(build_icassp_2022_model_path(FilenameSuffix[args.model_serialization]))
+        model = Model(
+            build_icassp_2022_model_path(FilenameSuffix[args.model_serialization])
+        )
     else:
         model = Model(args.model_path)
 
