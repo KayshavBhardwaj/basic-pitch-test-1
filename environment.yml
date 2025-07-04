@@ -6,5 +6,6 @@ dependencies:
   - pip
   - pip:
     - basic-pitch
+    - basic-pitch[tf]
     - paramiko
     - scp
