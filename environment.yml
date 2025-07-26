@@ -2,10 +2,11 @@ name: basic-pitch-env
 channels:
   - defaults
 dependencies:
-  - python=3.8
+  - python=3.11
   - pip
   - pip:
     - basic-pitch
     - basic-pitch[tf]
     - paramiko
     - scp
+    - tensorflow==2.15.0
